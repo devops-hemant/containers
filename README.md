@@ -30,7 +30,7 @@ Azure CLI and `dbsqlcli` bring Python runtimes/dependencies, so they dominate th
 ## Build
 
 ```bash
-docker build -t gha-runner-tools:local .
+docker build --provenance=false -t gha-runner-tools:local .
 ```
 
 For a pushed multi-architecture image:
@@ -38,6 +38,7 @@ For a pushed multi-architecture image:
 ```bash
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
+  --provenance=false \
   -t ghcr.io/YOUR_ORG/gha-runner-tools:latest \
   --push .
 ```
@@ -46,6 +47,7 @@ The main versions are build args:
 
 ```bash
 docker build \
+  --provenance=false \
   --build-arg PYTHON_IMAGE=python:3.10-slim-bookworm \
   --build-arg AZURE_CLI_DEBIAN_SUITE=bookworm \
   --build-arg DATABRICKS_CLI_VERSION=0.299.2 \
@@ -79,7 +81,21 @@ trivy image --severity HIGH,CRITICAL --exit-code 1 gha-runner-tools:local
 docker scout cves gha-runner-tools:local
 ```
 
-Rebuild regularly with a fresh `AZURE_CLI_IMAGE` tag to pick up base-image fixes.
+Current local arm64 build result with Docker Scout for HIGH/CRITICAL only:
+
+- image tag: `gha-runner-tools:local`
+- local Docker image size: `1.12GB`
+- Scout analyzed size: `208MB`
+- package count: `507`
+- vulnerability count: `0 critical`, `12 high`
+
+The remaining high findings are currently constrained by upstream packages:
+
+- Go `stdlib` and `golang.org/x/net` findings are from standalone Go binaries.
+- Debian `gnutls28` findings currently report no fixed Bookworm package.
+- `sqlparse==0.4.4` is pinned by `databricks-sql-cli==0.3.3` through `<0.5.0`.
+
+Rebuild regularly to pick up Debian, Microsoft Azure CLI, Databricks CLI, and `yq` fixes as they are published.
 
 ## GitHub Actions Usage
 

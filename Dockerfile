@@ -1,9 +1,21 @@
 # syntax=docker/dockerfile:1.7
 
 ARG PYTHON_IMAGE=python:3.10-slim-bookworm
+ARG DEBIAN_IMAGE=debian:bookworm-slim
 ARG AZURE_CLI_DEBIAN_SUITE=bookworm
 
-FROM ${PYTHON_IMAGE} AS base
+FROM ${PYTHON_IMAGE} AS python-runtime
+
+RUN set -eux; \
+    rm -f /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.* /usr/local/bin/wheel; \
+    rm -rf /usr/local/lib/python*/site-packages/pip /usr/local/lib/python*/site-packages/pip-*.dist-info /usr/local/lib/python*/site-packages/wheel /usr/local/lib/python*/site-packages/wheel-*.dist-info; \
+    rm -rf /usr/local/lib/python*/site-packages/setuptools/_vendor/wheel /usr/local/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info; \
+    find /usr/local -depth \( \
+      \( -type d -a \( -name "__pycache__" -o -name "test" -o -name "tests" -o -name "idle_test" \) \) \
+      -o \( -type f -a \( -name "*.pyc" -o -name "*.pyo" \) \) \
+    \) -exec rm -rf '{}' +
+
+FROM ${DEBIAN_IMAGE} AS base
 
 ARG AZURE_CLI_DEBIAN_SUITE=bookworm
 
@@ -14,16 +26,27 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 RUN set -eux; \
     apt-get update; \
-    apt-get install -y --no-install-recommends ca-certificates curl gpg; \
+    apt-get upgrade -y --no-install-recommends; \
+    apt-get install -y --no-install-recommends ca-certificates curl gpg libbz2-1.0 libexpat1 libffi8 liblzma5 libncursesw6 libreadline8 libsqlite3-0 libssl3 libuuid1 zlib1g; \
     install -m 0755 -d /etc/apt/keyrings; \
     curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg; \
     chmod go+r /etc/apt/keyrings/microsoft.gpg; \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ ${AZURE_CLI_DEBIAN_SUITE} main" > /etc/apt/sources.list.d/azure-cli.list; \
     apt-get update; \
     apt-get install -y --no-install-recommends azure-cli curl jq; \
+    /opt/az/bin/python3 -m pip install --no-cache-dir --no-compile --upgrade "urllib3==2.7.0"; \
+    rm -f /opt/az/bin/pip /opt/az/bin/pip3 /opt/az/bin/pip3.* /opt/az/bin/wheel; \
+    rm -rf /opt/az/lib/python*/site-packages/pip /opt/az/lib/python*/site-packages/pip-*.dist-info; \
+    rm -rf /opt/az/lib/python*/site-packages/setuptools/_vendor/wheel /opt/az/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info; \
+    find /opt/az/lib/python*/site-packages -depth \( \
+      \( -type d -a \( -name "__pycache__" -o -name "test" -o -name "tests" \) \) \
+      -o \( -type f -a \( -name "*.pyc" -o -name "*.pyo" \) \) \
+    \) -exec rm -rf '{}' +; \
     apt-get purge -y --auto-remove gpg; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+COPY --from=python-runtime /usr/local /usr/local
 
 FROM base AS cli-binaries
 
@@ -73,6 +96,7 @@ RUN set -eux; \
     find /opt/dbsqlcli -type d \( -name "__pycache__" -o -name "tests" -o -name "test" \) -prune -exec rm -rf '{}' +; \
     rm -f /opt/dbsqlcli/bin/pip /opt/dbsqlcli/bin/pip3 /opt/dbsqlcli/bin/pip3.*; \
     rm -rf /opt/dbsqlcli/lib/python*/site-packages/pip /opt/dbsqlcli/lib/python*/site-packages/pip-*.dist-info; \
+    rm -rf /opt/dbsqlcli/lib/python*/site-packages/setuptools/_vendor/wheel /opt/dbsqlcli/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info; \
     rm -rf /root/.cache /tmp/* /var/tmp/*
 
 FROM base
@@ -88,8 +112,10 @@ COPY --from=cli-binaries /out/yq /usr/local/bin/yq
 COPY --from=dbsqlcli /opt/dbsqlcli /opt/dbsqlcli
 
 RUN set -eux; \
-    rm -f /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.*; \
-    rm -rf /usr/local/lib/python*/site-packages/pip /usr/local/lib/python*/site-packages/pip-*.dist-info; \
+    ln -s /opt/dbsqlcli/bin/dbsqlcli /usr/local/bin/dbsqlcli; \
+    rm -f /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.* /usr/local/bin/wheel; \
+    rm -rf /usr/local/lib/python*/site-packages/pip /usr/local/lib/python*/site-packages/pip-*.dist-info /usr/local/lib/python*/site-packages/wheel /usr/local/lib/python*/site-packages/wheel-*.dist-info; \
+    rm -rf /usr/local/lib/python*/site-packages/setuptools/_vendor/wheel /usr/local/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info /opt/dbsqlcli/lib/python*/site-packages/setuptools/_vendor/wheel /opt/dbsqlcli/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info /opt/az/lib/python*/site-packages/setuptools/_vendor/wheel /opt/az/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info; \
     az version >/dev/null; \
     databricks -v; \
     dbsqlcli --help >/dev/null; \
