@@ -30,10 +30,13 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends ca-certificates curl gpg libbz2-1.0 libexpat1 libffi8 liblzma5 libncursesw6 libreadline8 libsqlite3-0 libssl3 libuuid1 zlib1g; \
     install -m 0755 -d /etc/apt/keyrings; \
     curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg; \
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /etc/apt/keyrings/githubcli-archive-keyring.gpg; \
     chmod go+r /etc/apt/keyrings/microsoft.gpg; \
+    chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg; \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ ${AZURE_CLI_DEBIAN_SUITE} main" > /etc/apt/sources.list.d/azure-cli.list; \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list; \
     apt-get update; \
-    apt-get install -y --no-install-recommends azure-cli curl jq; \
+    apt-get install -y --no-install-recommends azure-cli curl gh jq; \
     /opt/az/bin/python3 -m pip install --no-cache-dir --no-compile --upgrade "urllib3==2.7.0"; \
     rm -f /opt/az/bin/pip /opt/az/bin/pip3 /opt/az/bin/pip3.* /opt/az/bin/wheel; \
     rm -rf /opt/az/lib/python*/site-packages/pip /opt/az/lib/python*/site-packages/pip-*.dist-info; \
@@ -102,7 +105,7 @@ RUN set -eux; \
 FROM base
 
 LABEL org.opencontainers.image.title="GitHub Actions Databricks/Azure tools image" \
-      org.opencontainers.image.description="Python slim Bookworm based job container with Azure CLI, Databricks CLI, dbsqlcli, yq, jq, and curl."
+      org.opencontainers.image.description="Python slim Bookworm based job container with Azure CLI, Databricks CLI, dbsqlcli, GitHub CLI, yq, jq, and curl."
 
 ENV PATH="/opt/dbsqlcli/bin:${PATH}" \
     PYTHONDONTWRITEBYTECODE=1
@@ -119,6 +122,7 @@ RUN set -eux; \
     az version >/dev/null; \
     databricks -v; \
     dbsqlcli --help >/dev/null; \
+    gh --version; \
     yq --version; \
     jq --version; \
     curl --version | head -n 1
