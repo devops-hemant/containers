@@ -5,6 +5,7 @@ Small Python slim / Debian Bookworm based job-container image for GitHub Actions
 - Azure CLI (`az`)
 - Databricks CLI (`databricks`)
 - Databricks SQL CLI (`dbsqlcli`)
+- GitHub CLI (`gh`)
 - `yq`
 - `jq`
 - `curl`
@@ -21,8 +22,8 @@ Azure CLI and `dbsqlcli` bring Python runtimes/dependencies, so they dominate th
 
 - starting from `python:3.10-slim-bookworm` and installing Azure CLI from Microsoft's apt repository;
 - installing packages with `--no-install-recommends`;
-- downloading Databricks CLI and `yq` as standalone binaries;
-- verifying downloaded Databricks CLI and `yq` assets with upstream SHA256 files;
+- downloading Databricks CLI, GitHub CLI, and `yq` as standalone binaries;
+- verifying downloaded Databricks CLI, GitHub CLI, and `yq` assets with upstream SHA256 files;
 - installing `dbsqlcli` in an isolated virtual environment;
 - forcing binary Python wheels for the heavy compiled dependencies so compilers never enter the build;
 - removing pip and temporary caches from build layers.
@@ -52,6 +53,7 @@ docker build \
   --build-arg AZURE_CLI_DEBIAN_SUITE=bookworm \
   --build-arg DATABRICKS_CLI_VERSION=0.299.2 \
   --build-arg DBSQLCLI_VERSION=0.3.3 \
+  --build-arg GH_CLI_VERSION=2.92.0 \
   --build-arg YQ_VERSION=4.53.2 \
   -t gha-runner-tools:local .
 ```
@@ -63,6 +65,7 @@ docker run --rm gha-runner-tools:local bash -lc '
   az version >/dev/null &&
   databricks -v &&
   dbsqlcli --help >/dev/null &&
+  gh --version &&
   yq --version &&
   jq --version &&
   curl --version | head -n 1
@@ -85,17 +88,17 @@ Current local arm64 build result with Docker Scout for HIGH/CRITICAL only:
 
 - image tag: `gha-runner-tools:local`
 - local Docker image size: `1.12GB`
-- Scout analyzed size: `208MB`
-- package count: `507`
-- vulnerability count: `0 critical`, `12 high`
+- Scout analyzed size: `211MB`
+- package count: `677`
+- vulnerability count: `0 critical`, `14 high`
 
 The remaining high findings are currently constrained by upstream packages:
 
-- Go `stdlib` and `golang.org/x/net` findings are from standalone Go binaries.
+- Go `stdlib`, `golang.org/x/net`, and `github.com/docker/cli` findings are from standalone Go binaries.
 - Debian `gnutls28` findings currently report no fixed Bookworm package.
 - `sqlparse==0.4.4` is pinned by `databricks-sql-cli==0.3.3` through `<0.5.0`.
 
-Rebuild regularly to pick up Debian, Microsoft Azure CLI, Databricks CLI, and `yq` fixes as they are published.
+Rebuild regularly to pick up Debian, Microsoft Azure CLI, GitHub CLI, Databricks CLI, and `yq` fixes as they are published.
 
 ## GitHub Actions Usage
 
@@ -113,6 +116,7 @@ jobs:
           az version
           databricks -v
           dbsqlcli --help
+          gh --version
           yq --version
           jq --version
           curl --version
@@ -124,6 +128,7 @@ For Databricks authentication, pass `DATABRICKS_HOST` and `DATABRICKS_TOKEN` as 
 
 - [Azure CLI Docker container docs](https://learn.microsoft.com/en-us/cli/azure/run-azure-cli-docker)
 - [Azure CLI Linux install docs](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-linux)
+- [GitHub CLI install docs](https://github.com/cli/cli/blob/trunk/docs/install_linux.md)
 - [Databricks CLI install docs](https://learn.microsoft.com/en-us/azure/databricks/dev-tools/cli/install)
 - [Databricks SQL CLI on PyPI](https://pypi.org/project/databricks-sql-cli/)
 - [yq releases](https://github.com/mikefarah/yq/releases)

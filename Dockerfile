@@ -30,24 +30,21 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends ca-certificates curl gpg libbz2-1.0 libexpat1 libffi8 liblzma5 libncursesw6 libreadline8 libsqlite3-0 libssl3 libuuid1 zlib1g; \
     install -m 0755 -d /etc/apt/keyrings; \
     curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg; \
-    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /etc/apt/keyrings/githubcli-archive-keyring.gpg; \
     chmod go+r /etc/apt/keyrings/microsoft.gpg; \
-    chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg; \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ ${AZURE_CLI_DEBIAN_SUITE} main" > /etc/apt/sources.list.d/azure-cli.list; \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list; \
     apt-get update; \
-    apt-get install -y --no-install-recommends azure-cli curl gh jq; \
+    apt-get install -y --no-install-recommends azure-cli curl jq; \
     /opt/az/bin/python3 -m pip install --no-cache-dir --no-compile --upgrade "urllib3==2.7.0"; \
     rm -f /opt/az/bin/pip /opt/az/bin/pip3 /opt/az/bin/pip3.* /opt/az/bin/wheel; \
     rm -rf /opt/az/lib/python*/site-packages/pip /opt/az/lib/python*/site-packages/pip-*.dist-info; \
     rm -rf /opt/az/lib/python*/site-packages/setuptools/_vendor/wheel /opt/az/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info; \
-    find /opt/az/lib/python*/site-packages -depth \( \
-      \( -type d -a \( -name "__pycache__" -o -name "test" -o -name "tests" \) \) \
+    find /opt/az /usr/local -depth \( \
+      \( -type d -a \( -name "__pycache__" -o -name "test" -o -name "tests" -o -name "idlelib" -o -name "turtledemo" \) \) \
       -o \( -type f -a \( -name "*.pyc" -o -name "*.pyo" \) \) \
     \) -exec rm -rf '{}' +; \
     apt-get purge -y --auto-remove gpg; \
     apt-get clean; \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/info/* /var/cache/debconf/* /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 COPY --from=python-runtime /usr/local /usr/local
 
@@ -55,6 +52,7 @@ FROM base AS cli-binaries
 
 ARG TARGETARCH
 ARG DATABRICKS_CLI_VERSION=0.299.2
+ARG GH_CLI_VERSION=2.92.0
 ARG YQ_VERSION=4.53.2
 
 RUN set -eux; \
@@ -80,7 +78,20 @@ RUN set -eux; \
     printf '%s  %s\n' "${yq_sha256}" "${yq_file}" > /tmp/yq.sha256; \
     sha256sum -c /tmp/yq.sha256; \
     install -m 0755 "/tmp/${yq_file}" /out/yq; \
+    case "${arch}" in \
+      amd64) gh_arch="amd64" ;; \
+      arm64) gh_arch="arm64" ;; \
+    esac; \
+    gh_file="gh_${GH_CLI_VERSION}_linux_${gh_arch}.deb"; \
+    curl -fsSLo "/tmp/${gh_file}" "https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/${gh_file}"; \
+    curl -fsSLo /tmp/gh_checksums "https://github.com/cli/cli/releases/download/v${GH_CLI_VERSION}/gh_${GH_CLI_VERSION}_checksums.txt"; \
+    grep -F "${gh_file}" /tmp/gh_checksums > /tmp/gh.sha256; \
+    cd /tmp; \
+    sha256sum -c /tmp/gh.sha256; \
+    dpkg-deb -x "/tmp/${gh_file}" /tmp/gh; \
+    install -m 0755 /tmp/gh/usr/bin/gh /out/gh; \
     /out/databricks -v; \
+    /out/gh --version; \
     /out/yq --version; \
     rm -rf /tmp/*
 
@@ -111,6 +122,7 @@ ENV PATH="/opt/dbsqlcli/bin:${PATH}" \
     PYTHONDONTWRITEBYTECODE=1
 
 COPY --from=cli-binaries /out/databricks /usr/local/bin/databricks
+COPY --from=cli-binaries /out/gh /usr/local/bin/gh
 COPY --from=cli-binaries /out/yq /usr/local/bin/yq
 COPY --from=dbsqlcli /opt/dbsqlcli /opt/dbsqlcli
 
@@ -119,6 +131,11 @@ RUN set -eux; \
     rm -f /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.* /usr/local/bin/wheel; \
     rm -rf /usr/local/lib/python*/site-packages/pip /usr/local/lib/python*/site-packages/pip-*.dist-info /usr/local/lib/python*/site-packages/wheel /usr/local/lib/python*/site-packages/wheel-*.dist-info; \
     rm -rf /usr/local/lib/python*/site-packages/setuptools/_vendor/wheel /usr/local/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info /opt/dbsqlcli/lib/python*/site-packages/setuptools/_vendor/wheel /opt/dbsqlcli/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info /opt/az/lib/python*/site-packages/setuptools/_vendor/wheel /opt/az/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info; \
+    find /opt/az /opt/dbsqlcli /usr/local -depth \( \
+      \( -type d -a \( -name "__pycache__" -o -name "test" -o -name "tests" -o -name "idlelib" -o -name "turtledemo" \) \) \
+      -o \( -type f -a \( -name "*.pyc" -o -name "*.pyo" \) \) \
+    \) -exec rm -rf '{}' +; \
+    rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/info/* /var/cache/debconf/* /tmp/* /var/tmp/*; \
     az version >/dev/null; \
     databricks -v; \
     dbsqlcli --help >/dev/null; \
