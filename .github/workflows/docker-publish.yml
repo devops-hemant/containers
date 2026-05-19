@@ -7,15 +7,7 @@ name: Docker declis
 
 on:
   push:
-    branches: [ "main" ]
-    paths:
-      - 'Dockerfile'
-    # Publish semver tags as releases.
-    tags: [ 'v*.*.*' ]
-  pull_request:
-    branches: [ "main" ]
-    types:
-      - closed
+    tags: [ 'dev*.*.*' ]
     
 
 env:
