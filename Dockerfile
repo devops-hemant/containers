@@ -35,6 +35,8 @@ RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends azure-cli curl jq; \
     /opt/az/bin/python3 -m pip install --no-cache-dir --no-compile --upgrade "urllib3==2.7.0"; \
+    az extension add --name datafactory --yes; \
+    az datafactory --help >/dev/null; \
     rm -f /opt/az/bin/pip /opt/az/bin/pip3 /opt/az/bin/pip3.* /opt/az/bin/wheel; \
     rm -rf /opt/az/lib/python*/site-packages/pip /opt/az/lib/python*/site-packages/pip-*.dist-info; \
     rm -rf /opt/az/lib/python*/site-packages/setuptools/_vendor/wheel /opt/az/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info; \
@@ -119,6 +121,7 @@ LABEL org.opencontainers.image.title="GitHub Actions Databricks/Azure tools imag
       org.opencontainers.image.description="Python slim Bookworm based job container with Azure CLI, Databricks CLI, dbsqlcli, GitHub CLI, yq, jq, and curl."
 
 ENV PATH="/opt/dbsqlcli/bin:${PATH}" \
+    AZURE_EXTENSION_DIR="/root/.azure/cliextensions" \
     PYTHONDONTWRITEBYTECODE=1
 
 COPY --from=cli-binaries /out/databricks /usr/local/bin/databricks
@@ -130,13 +133,14 @@ RUN set -eux; \
     ln -s /opt/dbsqlcli/bin/dbsqlcli /usr/local/bin/dbsqlcli; \
     rm -f /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.* /usr/local/bin/wheel; \
     rm -rf /usr/local/lib/python*/site-packages/pip /usr/local/lib/python*/site-packages/pip-*.dist-info /usr/local/lib/python*/site-packages/wheel /usr/local/lib/python*/site-packages/wheel-*.dist-info; \
-    rm -rf /usr/local/lib/python*/site-packages/setuptools/_vendor/wheel /usr/local/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info /opt/dbsqlcli/lib/python*/site-packages/setuptools/_vendor/wheel /opt/dbsqlcli/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info /opt/az/lib/python*/site-packages/setuptools/_vendor/wheel /opt/az/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info; \
-    find /opt/az /opt/dbsqlcli /usr/local -depth \( \
+    rm -rf /usr/local/lib/python*/site-packages/setuptools/_vendor/wheel /usr/local/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info /opt/dbsqlcli/lib/python*/site-packages/setuptools/_vendor/wheel /opt/dbsqlcli/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info /opt/az/lib/python*/site-packages/setuptools/_vendor/wheel /opt/az/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info /root/.azure/cliextensions/*/setuptools/_vendor/wheel /root/.azure/cliextensions/*/setuptools/_vendor/wheel-*.dist-info; \
+    find /opt/az /opt/dbsqlcli /usr/local /root/.azure/cliextensions -depth \( \
       \( -type d -a \( -name "__pycache__" -o -name "test" -o -name "tests" -o -name "idlelib" -o -name "turtledemo" \) \) \
       -o \( -type f -a \( -name "*.pyc" -o -name "*.pyo" \) \) \
     \) -exec rm -rf '{}' +; \
     rm -rf /usr/share/doc/* /usr/share/man/* /usr/share/info/* /var/cache/debconf/* /tmp/* /var/tmp/*; \
     az version >/dev/null; \
+    az datafactory --help >/dev/null; \
     databricks -v; \
     dbsqlcli --help >/dev/null; \
     gh --version; \
