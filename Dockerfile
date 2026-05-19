@@ -7,8 +7,8 @@ ARG AZURE_CLI_DEBIAN_SUITE=bookworm
 FROM ${PYTHON_IMAGE} AS python-runtime
 
 RUN set -eux; \
-    rm -f /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.* /usr/local/bin/wheel; \
-    rm -rf /usr/local/lib/python*/site-packages/pip /usr/local/lib/python*/site-packages/pip-*.dist-info /usr/local/lib/python*/site-packages/wheel /usr/local/lib/python*/site-packages/wheel-*.dist-info; \
+    rm -f /usr/local/bin/wheel; \
+    rm -rf /usr/local/lib/python*/site-packages/wheel /usr/local/lib/python*/site-packages/wheel-*.dist-info; \
     rm -rf /usr/local/lib/python*/site-packages/setuptools/_vendor/wheel /usr/local/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info; \
     find /usr/local -depth \( \
       \( -type d -a \( -name "__pycache__" -o -name "test" -o -name "tests" -o -name "idle_test" \) \) \
@@ -118,7 +118,7 @@ RUN set -eux; \
 FROM base
 
 LABEL org.opencontainers.image.title="GitHub Actions Databricks/Azure tools image" \
-      org.opencontainers.image.description="Python slim Bookworm based job container with Azure CLI, Databricks CLI, dbsqlcli, GitHub CLI, yq, jq, and curl."
+      org.opencontainers.image.description="Python slim Bookworm based job container with Azure CLI, Databricks CLI, dbsqlcli, GitHub CLI, pip, yq, jq, and curl."
 
 ENV PATH="/opt/dbsqlcli/bin:${PATH}" \
     AZURE_EXTENSION_DIR="/root/.azure/cliextensions" \
@@ -131,8 +131,8 @@ COPY --from=dbsqlcli /opt/dbsqlcli /opt/dbsqlcli
 
 RUN set -eux; \
     ln -s /opt/dbsqlcli/bin/dbsqlcli /usr/local/bin/dbsqlcli; \
-    rm -f /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.* /usr/local/bin/wheel; \
-    rm -rf /usr/local/lib/python*/site-packages/pip /usr/local/lib/python*/site-packages/pip-*.dist-info /usr/local/lib/python*/site-packages/wheel /usr/local/lib/python*/site-packages/wheel-*.dist-info; \
+    rm -f /usr/local/bin/wheel; \
+    rm -rf /usr/local/lib/python*/site-packages/wheel /usr/local/lib/python*/site-packages/wheel-*.dist-info; \
     rm -rf /usr/local/lib/python*/site-packages/setuptools/_vendor/wheel /usr/local/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info /opt/dbsqlcli/lib/python*/site-packages/setuptools/_vendor/wheel /opt/dbsqlcli/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info /opt/az/lib/python*/site-packages/setuptools/_vendor/wheel /opt/az/lib/python*/site-packages/setuptools/_vendor/wheel-*.dist-info /root/.azure/cliextensions/*/setuptools/_vendor/wheel /root/.azure/cliextensions/*/setuptools/_vendor/wheel-*.dist-info; \
     find /opt/az /opt/dbsqlcli /usr/local /root/.azure/cliextensions -depth \( \
       \( -type d -a \( -name "__pycache__" -o -name "test" -o -name "tests" -o -name "idlelib" -o -name "turtledemo" \) \) \
@@ -144,6 +144,7 @@ RUN set -eux; \
     databricks -v; \
     dbsqlcli --help >/dev/null; \
     gh --version; \
+    pip --version; \
     yq --version; \
     jq --version; \
     curl --version | head -n 1

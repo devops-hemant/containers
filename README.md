@@ -7,6 +7,7 @@ Small Python slim / Debian Bookworm based job-container image for GitHub Actions
 - Databricks CLI (`databricks`)
 - Databricks SQL CLI (`dbsqlcli`)
 - GitHub CLI (`gh`)
+- `pip`
 - `yq`
 - `jq`
 - `curl`
@@ -28,7 +29,7 @@ Azure CLI and `dbsqlcli` bring Python runtimes/dependencies, so they dominate th
 - verifying downloaded Databricks CLI, GitHub CLI, and `yq` assets with upstream SHA256 files;
 - installing `dbsqlcli` in an isolated virtual environment;
 - forcing binary Python wheels for the heavy compiled dependencies so compilers never enter the build;
-- removing pip and temporary caches from build layers.
+- removing duplicate private pip copies and temporary caches from build layers.
 
 ## Build
 
@@ -69,6 +70,7 @@ docker run --rm gha-runner-tools:local bash -lc '
   databricks -v &&
   dbsqlcli --help >/dev/null &&
   gh --version &&
+  pip --version &&
   yq --version &&
   jq --version &&
   curl --version | head -n 1
@@ -90,9 +92,9 @@ docker scout cves gha-runner-tools:local
 Current local arm64 build result with Docker Scout for HIGH/CRITICAL only:
 
 - image tag: `gha-runner-tools:local`
-- local Docker image size: `1.13GB`
-- Scout analyzed size: `213MB`
-- package count: `678`
+- local Docker image size: `1.14GB`
+- Scout analyzed size: `215MB`
+- package count: `679`
 - vulnerability count: `0 critical`, `14 high`
 
 The remaining high findings are currently constrained by upstream packages:
@@ -121,6 +123,7 @@ jobs:
           databricks -v
           dbsqlcli --help
           gh --version
+          pip --version
           yq --version
           jq --version
           curl --version
