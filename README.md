@@ -3,6 +3,7 @@
 Small Python slim / Debian Bookworm based job-container image for GitHub Actions workflows that need:
 
 - Azure CLI (`az`)
+- Azure CLI Data Factory extension (`az datafactory`)
 - Databricks CLI (`databricks`)
 - Databricks SQL CLI (`dbsqlcli`)
 - GitHub CLI (`gh`)
@@ -21,6 +22,7 @@ The official Azure CLI container now uses Azure Linux 3.0 and is a good base for
 Azure CLI and `dbsqlcli` bring Python runtimes/dependencies, so they dominate the final size. The Dockerfile keeps the final image lean by:
 
 - starting from `python:3.10-slim-bookworm` and installing Azure CLI from Microsoft's apt repository;
+- installing the Azure CLI Data Factory extension at build time;
 - installing packages with `--no-install-recommends`;
 - downloading Databricks CLI, GitHub CLI, and `yq` as standalone binaries;
 - verifying downloaded Databricks CLI, GitHub CLI, and `yq` assets with upstream SHA256 files;
@@ -63,6 +65,7 @@ docker build \
 ```bash
 docker run --rm gha-runner-tools:local bash -lc '
   az version >/dev/null &&
+  az datafactory --help >/dev/null &&
   databricks -v &&
   dbsqlcli --help >/dev/null &&
   gh --version &&
@@ -87,9 +90,9 @@ docker scout cves gha-runner-tools:local
 Current local arm64 build result with Docker Scout for HIGH/CRITICAL only:
 
 - image tag: `gha-runner-tools:local`
-- local Docker image size: `1.12GB`
-- Scout analyzed size: `211MB`
-- package count: `677`
+- local Docker image size: `1.13GB`
+- Scout analyzed size: `213MB`
+- package count: `678`
 - vulnerability count: `0 critical`, `14 high`
 
 The remaining high findings are currently constrained by upstream packages:
@@ -114,6 +117,7 @@ jobs:
       - name: Verify tools
         run: |
           az version
+          az datafactory --help
           databricks -v
           dbsqlcli --help
           gh --version
@@ -128,6 +132,7 @@ For Databricks authentication, pass `DATABRICKS_HOST` and `DATABRICKS_TOKEN` as 
 
 - [Azure CLI Docker container docs](https://learn.microsoft.com/en-us/cli/azure/run-azure-cli-docker)
 - [Azure CLI Linux install docs](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-linux)
+- [Azure CLI Data Factory command docs](https://learn.microsoft.com/en-us/cli/azure/datafactory)
 - [GitHub CLI install docs](https://github.com/cli/cli/blob/trunk/docs/install_linux.md)
 - [Databricks CLI install docs](https://learn.microsoft.com/en-us/azure/databricks/dev-tools/cli/install)
 - [Databricks SQL CLI on PyPI](https://pypi.org/project/databricks-sql-cli/)
