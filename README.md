@@ -1,4 +1,4 @@
-# GitHub Actions Tools Image declis(Data Engineering CLIs)
+# GitHub Actions Tools Image declis
 
 Small Python slim / Debian Bookworm based job-container image for GitHub Actions workflows that need:
 
